@@ -349,7 +349,6 @@
     const progressBar = document.getElementById('progressBar');
     const container = document.querySelector('main.container');
 
-    // Função que anima a barra de progresso em 3 segundos
     function animateProgressBar(duration = 3000) {
       return new Promise(resolve => {
         let start = null;
@@ -368,7 +367,6 @@
       });
     }
 
-    // Mostrar splash por 3s com barra animada e depois revelar o formulário
     (async () => {
       await animateProgressBar(3000);
       splash.style.display = 'none';
@@ -397,7 +395,6 @@
     const btnAgendar = document.getElementById("btnAgendar");
     const msgStatus = document.getElementById("msgStatus");
 
-    // Função pra mostrar mensagem temporária
     function showMessage(msg, isError = false) {
       msgStatus.textContent = msg;
       msgStatus.style.backgroundColor = isError ? '#7a1e1edd' : '#272727dd';
@@ -407,7 +404,6 @@
       }, 4000);
     }
 
-    // Carregar serviços do Firebase
     onValue(ref(db, 'servicos'), (snapshot) => {
       servicosDiv.innerHTML = '';
       if (!snapshot.exists()) {
@@ -465,7 +461,6 @@
       });
     });
 
-    // Validação da data/hora do agendamento
     function validarHorario(valor) {
       if (!valor) return false;
       const agora = new Date();
@@ -531,7 +526,6 @@
         });
         showMessage('Agendamento realizado com sucesso!');
         form.reset();
-        // Reset aria-checked
         const radios = servicosDiv.querySelectorAll('[role=radio]');
         radios.forEach(r => r.setAttribute('aria-checked', 'false'));
       } catch (error) {
@@ -540,59 +534,60 @@
         setLoading(false);
       }
     });
-    
+
+    // ✅ Correções feitas a partir daqui
     function formatarHora(horarioISO) {
-  const data = new Date(horarioISO);
-  return data.getHours().toString().padStart(2, '0') + ':00';
-}
+      const data = new Date(horarioISO);
+      return data.getHours().toString().padStart(2, '0') + ':00';
+    }
 
-function gerarTodosHorarios() {
-  const horas = [];
-  for (let h = 9; h <= 20; h++) {
-    horas.push(h.toString().padStart(2, '0') + ':00');
-  }
-  return horas;
-}
-
-function atualizarHorariosDisponiveis(dataSelecionadaISO) {
-  const horariosDiv = document.getElementById('horariosDisponiveis');
-  if (!dataSelecionadaISO) {
-    horariosDiv.innerHTML = `<strong>⏰ Horários disponíveis:</strong><br><em>Selecione uma data para ver os horários livres</em>`;
-    return;
-  }
-
-  const dataSelecionada = new Date(dataSelecionadaISO);
-  const diaSelecionado = dataSelecionada.toISOString().split('T')[0];
-
-  const agendamentosRef = ref(db, 'agendamentos');
-  onValue(agendamentosRef, (snapshot) => {
-    const todosHorarios = gerarTodosHorarios();
-    const ocupados = [];
-
-    snapshot.forEach(child => {
-      const agendamento = child.val();
-      const dataAgendada = new Date(agendamento.horario);
-      const diaAgendado = dataAgendada.toISOString().split('T')[0];
-
-      if (diaAgendado === diaSelecionado) {
-        ocupados.push(formatarHora(agendamento.horario));
+    function gerarTodosHorarios() {
+      const horas = [];
+      for (let h = 9; h <= 20; h++) {
+        horas.push(h.toString().padStart(2, '0') + ':00');
       }
+      return horas;
+    }
+
+    function atualizarHorariosDisponiveis(dataSelecionadaISO) {
+      const horariosDiv = document.getElementById('horariosDisponiveis');
+      if (!dataSelecionadaISO) {
+        horariosDiv.innerHTML = `<strong>⏰ Horários disponíveis:</strong><br><em>Selecione uma data para ver os horários livres</em>`;
+        return;
+      }
+
+      const dataSelecionada = new Date(dataSelecionadaISO);
+      const diaSelecionado = dataSelecionada.toISOString().split('T')[0];
+
+      const agendamentosRef = ref(db, 'agendamentos');
+      onValue(agendamentosRef, (snapshot) => {
+        const todosHorarios = gerarTodosHorarios();
+        const ocupados = [];
+
+        snapshot.forEach(child => {
+          const agendamento = child.val();
+          const dataAgendada = new Date(agendamento.horario);
+          const diaAgendado = dataAgendada.toISOString().split('T')[0];
+
+          if (diaAgendado === diaSelecionado) {
+            ocupados.push(formatarHora(agendamento.horario));
+          }
+        });
+
+        const livres = todosHorarios.filter(h => !ocupados.includes(h));
+        horariosDiv.innerHTML = `<strong>⏰ Horários disponíveis:</strong><br>${
+          livres.length > 0
+            ? livres.join(', ')
+            : '<em>Todos os horários estão ocupados nesse dia.</em>'
+        }`;
+      }, { onlyOnce: true });
+    }
+
+    const campoHorario = document.getElementById('horario');
+    campoHorario.addEventListener('change', () => {
+      atualizarHorariosDisponiveis(campoHorario.value);
     });
+</script>
 
-    const livres = todosHorarios.filter(h => !ocupados.includes(h));
-    horariosDiv.innerHTML = `<strong>⏰ Horários disponíveis:</strong><br>${
-      livres.length > 0
-        ? livres.join(', ')
-        : '<em>Todos os horários estão ocupados nesse dia.</em>'
-    }`;
-  }, { onlyOnce: true });
-}
-
-const campoHorario = document.getElementById('horario');
-campoHorario.addEventListener('change', () => {
-  atualizarHorariosDisponiveis(campoHorario.value);
-});
-
-  </script>
 </body>
 </html>
