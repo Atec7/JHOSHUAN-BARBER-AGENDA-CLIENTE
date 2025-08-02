@@ -588,7 +588,7 @@
         btnCancelar.style.marginTop = '8px';
         btnCancelar.onclick = () => {
           const msg = `Olá, gostaria de cancelar o agendamento de ${agendamento.nome} marcado para ${formatarDataHora(agendamento.horario)}.`;
-          window.open(`https://wa.me/5564992952748?text=${encodeURIComponent(msg)}`, '_blank');
+          window.open(`https://wa.me/64984480171?text=${encodeURIComponent(msg)}`, '_blank');
           window.registrarNotificacao('cancelamento', { nome: agendamento.nome, horario: agendamento.horario });
         };
 
@@ -597,7 +597,7 @@
         btnEspera.style.marginTop = '6px';
         btnEspera.onclick = () => {
           const msg = `Olá, gostaria de solicitar um acréscimo de 5 minutos para o agendamento de ${agendamento.nome} marcado para ${formatarDataHora(agendamento.horario)}.`;
-          window.open(`https://wa.me/5564992952748?text=${encodeURIComponent(msg)}`, '_blank');
+          window.open(`https://wa.me/64984480171?text=${encodeURIComponent(msg)}`, '_blank');
           window.registrarNotificacao('pedir_mais_5min', { nome: agendamento.nome, horario: agendamento.horario });
         };
 
