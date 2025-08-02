@@ -36,6 +36,7 @@
       letter-spacing: 2px;
       user-select: none;
       box-shadow: 0 2px 8px rgba(255, 215, 0, 0.5);
+      border-radius: 8px;
     }
     #logo {
       border-radius:50%;
@@ -222,10 +223,12 @@
         height: 55px;
       }
       button {
-        font-size: 1rem;
-        padding: 12px;
-      }
+  font-size: 1rem;
+  padding: 10px;
+}
+
     }
+
 
     /* Tela de carregamento (splash) */
     #splash {
@@ -275,11 +278,47 @@
     .titulo{
       font-size:16px;
     }
+}
+
+    #toggleMenu {
+  font-size: 5px;
+  margin-left: auto;
+  cursor: pointer;
+  color: #FFD700;
+}
+
+#menuHistorico {
+  position: fixed;
+  top: 80px;
+  left: 0;
+  width: 280px;
+  height: calc(100vh - 80px);
+  background: #000;
+  color: #fff;
+  box-shadow: 2px 0 10px #FFD70055;
+  padding: 20px;
+  overflow-y: auto;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+  z-index: 2000;
+  border-radius: 20px;
+}
+
+#menuHistorico.open {
+  transform: translateX(0);
+}
+
+#menuHistorico h3 {
+  color: #FFD700;
+  margin-bottom: 20px;
+}
+
+    
   </style>
 </head>
 <body>
   <div id="splash">
-    <img src="logo.jpg" alt="Logo da Barbearia" />
+    <img src="logobarber.png" alt="Logo da Barbearia" />
     <h1>JHOSHUAN BARBER SHOP</h1>
     <div id="progressBarContainer">
       <div id="progressBar"></div>
@@ -287,8 +326,10 @@
     <p>www.atecseven.com.br</p>
   </div>
 
-  <header><img src="logo.jpg" alt="Logo da Barbearia" id="logo" />
-    <h1 class="titulo">JHOSHUAN BARBER SHOP</h1></header>
+  <header><img src="logobarber.png" alt="Logo da Barbearia" id="logo" />
+    <span id="toggleMenu"><i class="fa-solid fa-clock-rotate-left"></i></span>
+    <div id="menuHistorico"></div>
+<h1 class="titulo">JHOSHUAN BARBER SHOP</h1></header>
   <main class="container" style="display:none;">
     <form id="formAgendamento" novalidate>
       <div id="servicos"></div>
@@ -322,10 +363,10 @@
   <div id="msgStatus"></div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js";
-    import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js";
+  import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
 
-    const firebaseConfig = {
+  const firebaseConfig = {
       apiKey: "AIzaSyAEtxmBU7vqhR7w1VSi9_QNJQOCmZhNkPA",
       authDomain: "babearia-jhosuan.firebaseapp.com",
       databaseURL: "https://babearia-jhosuan-default-rtdb.firebaseio.com/",
@@ -336,216 +377,247 @@
       measurementId: "G-DEH0MNFLQF"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
 
-    const servicosDiv = document.getElementById("servicos");
-    const form = document.getElementById("formAgendamento");
-    const btnAgendar = document.getElementById("btnAgendar");
-    const msgStatus = document.getElementById("msgStatus");
-    const campoData = document.getElementById("dataAgendamento");
-    const campoHora = document.getElementById("horaAgendamento");
+  const servicosDiv = document.getElementById("servicos");
+  const form = document.getElementById("formAgendamento");
+  const btnAgendar = document.getElementById("btnAgendar");
+  const msgStatus = document.getElementById("msgStatus");
+  const campoData = document.getElementById("dataAgendamento");
+  const campoHora = document.getElementById("horaAgendamento");
 
-    let servicosDados = {};
+  let servicosDados = {};
 
-    function showMessage(msg, isError = false) {
-      msgStatus.textContent = msg;
-      msgStatus.style.backgroundColor = isError ? '#7a1e1edd' : '#272727dd';
-      msgStatus.classList.add('show');
-      setTimeout(() => msgStatus.classList.remove('show'), 4000);
+  function showMessage(msg, isError = false) {
+    msgStatus.textContent = msg;
+    msgStatus.style.backgroundColor = isError ? '#7a1e1edd' : '#272727dd';
+    msgStatus.classList.add('show');
+    setTimeout(() => msgStatus.classList.remove('show'), 4000);
+  }
+
+  function gerarTodosHorarios() {
+    const horarios = [];
+    const inicio = new Date(); inicio.setHours(9, 0, 0, 0);
+    const fim = new Date(); fim.setHours(21, 0, 0, 0);
+    let atual = new Date(inicio);
+    while (atual < fim) {
+      const h = atual.getHours().toString().padStart(2, '0');
+      const m = atual.getMinutes().toString().padStart(2, '0');
+      horarios.push(`${h}:${m}`);
+      atual = new Date(atual.getTime() + 10 * 60000);
     }
+    return horarios;
+  }
 
-    function gerarTodosHorarios() {
-      const horarios = [];
-      const inicio = new Date();
-      inicio.setHours(9, 0, 0, 0);
-      const fim = new Date();
-      fim.setHours(21, 0, 0, 0);
+  function validarHorario(horarioISO) {
+    if (!horarioISO || !horarioISO.includes('T')) return false;
+    const [dataStr, horaStr] = horarioISO.split('T');
+    if (!dataStr || !horaStr) return false;
+    const [ano, mes, dia] = dataStr.split('-').map(Number);
+    const [hora, minuto] = horaStr.split(':').map(Number);
+    const agendamento = new Date(ano, mes - 1, dia, hora, minuto);
+    const agora = new Date();
+    if (isNaN(agendamento.getTime())) return false;
+    if (agendamento <= agora) return false;
+    const horarioValido = (hora > 9 || (hora === 9 && minuto >= 0)) &&
+                          (hora < 21 || (hora === 21 && minuto === 0));
+    return horarioValido;
+  }
 
-      let atual = new Date(inicio);
-      while (atual < fim) {
-        const h = atual.getHours().toString().padStart(2, '0');
-        const m = atual.getMinutes().toString().padStart(2, '0');
-        horarios.push(`${h}:${m}`);
-        atual = new Date(atual.getTime() + 10 * 60000);
-      }
-      return horarios;
+  function atualizarHorariosDisponiveis(dataISO) {
+    campoHora.innerHTML = '<option value="">Carregando...</option>';
+    const servicoInput = form.querySelector('input[name="servico"]:checked');
+    if (!servicoInput) {
+      campoHora.innerHTML = '<option value="">Selecione um serviço primeiro</option>';
+      return;
     }
-
-    function validarHorario(horarioISO) {
-  if (!horarioISO || !horarioISO.includes('T')) return false;
-
-  const [dataStr, horaStr] = horarioISO.split('T');
-  if (!dataStr || !horaStr) return false;
-
-  const [hora, minuto] = horaStr.split(':').map(Number);
-  const [ano, mes, dia] = dataStr.split('-').map(Number);
-
-  const agendamento = new Date(ano, mes - 1, dia, hora, minuto);
-  const agora = new Date();
-
-  // Verifica se a data é válida
-  if (isNaN(agendamento.getTime())) return false;
-
-  // Verifica se a data está no passado
-  if (agendamento <= agora) return false;
-
-  // Verifica se está dentro do horário de atendimento (09:00 às 21:00)
-  const horarioValido = (hora > 9 || (hora === 9 && minuto >= 0)) &&
-                        (hora < 21 || (hora === 21 && minuto === 0));
-
-  return horarioValido;
-}
-
-
-
-    function atualizarHorariosDisponiveis(dataISO) {
-      campoHora.innerHTML = '<option value="">Carregando...</option>';
-      const dia = dataISO;
-      const servicoInput = form.querySelector('input[name="servico"]:checked');
-      if (!servicoInput) {
-        campoHora.innerHTML = '<option value="">Selecione um serviço primeiro</option>';
-        return;
-      }
-
-      const duracao = servicosDados[servicoInput.value]?.tempo || 0;
-      const todos = gerarTodosHorarios();
-
-      onValue(ref(db, 'agendamentos'), (snapshot) => {
-        const ocupados = [];
-        snapshot.forEach(child => {
-          const ag = child.val();
-          const dataAg = new Date(ag.horario);
-          if (dataAg.toISOString().split('T')[0] === dia) {
-            const tempo = servicosDados[ag.servicoId]?.tempo || 0;
-            ocupados.push({
-              start: dataAg.getTime(),
-              end: dataAg.getTime() + tempo * 60000
-            });
-          }
-        });
-
-        const disponiveis = todos.filter(horario => {
-          const [h, m] = horario.split(':');
-          const inicio = new Date(`${dia}T${h}:${m}:00`);
-          const fim = new Date(inicio.getTime() + duracao * 60000);
-
-          if (fim.getHours() > 21 || (fim.getHours() === 21 && fim.getMinutes() > 0)) return false;
-
-          return !ocupados.some(o => (inicio < o.end && fim > o.start));
-        });
-
-        campoHora.innerHTML = disponiveis.length
-          ? '<option value="">Selecione um horário</option>' + disponiveis.map(h => `<option value="${h}">${h}</option>`).join('')
-          : '<option value="">Sem horários disponíveis</option>';
-      }, { onlyOnce: true });
-    }
-
-    campoData.addEventListener('change', () => {
-      const val = campoData.value;
-      if (val) atualizarHorariosDisponiveis(val);
-    });
-
-    async function fetchServicos() {
-      onValue(ref(db, 'servicos'), (snapshot) => {
-        servicosDiv.innerHTML = '';
-        servicosDados = {};
-        snapshot.forEach(child => {
-          const serv = child.val();
-          servicosDados[child.key] = serv;
-
-          const label = document.createElement('label');
-          label.className = 'servico';
-          const input = document.createElement('input');
-          input.type = 'radio';
-          input.name = 'servico';
-          input.value = child.key;
-          input.required = true;
-          input.addEventListener('change', () => {
-            if (campoData.value) atualizarHorariosDisponiveis(campoData.value);
-          });
-
-          const img = document.createElement('img');
-          img.src = serv.imagem;
-          img.alt = serv.nome;
-
-          const div = document.createElement('div');
-          const strong = document.createElement('strong');
-          strong.textContent = serv.nome;
-          const small = document.createElement('small');
-          small.textContent = `R$ ${serv.preco} - ${serv.tempo} min`;
-          div.appendChild(strong);
-          div.appendChild(small);
-
-          label.appendChild(input);
-          label.appendChild(img);
-          label.appendChild(div);
-          servicosDiv.appendChild(label);
-        });
-      }, { onlyOnce: true });
-    }
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const nome = form.nome.value.trim();
-      const whatsapp = form.whatsapp.value.trim();
-      const data = campoData.value;
-      const hora = campoHora.value;
-      const servicoInput = form.querySelector('input[name="servico"]:checked');
-      const horario = `${data}T${hora}:00`;
-
-      if (!nome || nome.length < 3 || !validarHorario(horario) || !servicoInput || !hora) {
-        showMessage('Provavelmente já passou desse horário🤔⏱.', true);
-        return;
-      }
-
-      btnAgendar.disabled = true;
-      btnAgendar.innerHTML = 'Agendando...';
-
-      try {
-        await push(ref(db, 'agendamentos'), {
-          nome,
-          whatsapp,
-          horario,
-          servicoId: servicoInput.value,
-          status: 'Agendado',
-          criadoEm: new Date().toISOString()
-        });
-        showMessage('Agendamento realizado com sucesso!');
-        form.reset();
-        campoHora.innerHTML = '<option value="">Selecione uma data primeiro</option>';
-      } catch (err) {
-        showMessage('Erro ao agendar: ' + err.message, true);
-      } finally {
-        btnAgendar.disabled = false;
-        btnAgendar.innerHTML = 'Agendar <i class="fa-solid fa-calendar-check"></i>';
-      }
-    });
-
-    function initSplash() {
-      const splash = document.getElementById('splash');
-      const progressBar = document.getElementById('progressBar');
-      const container = document.querySelector('main.container');
-
-      let start = null;
-      function step(timestamp) {
-        if (!start) start = timestamp;
-        const elapsed = timestamp - start;
-        const progress = Math.min((elapsed / 3000) * 100, 100);
-        progressBar.style.width = progress + '%';
-        if (elapsed < 3000) {
-          requestAnimationFrame(step);
-        } else {
-          splash.style.display = 'none';
-          container.style.display = 'flex';
+    const duracao = servicosDados[servicoInput.value]?.tempo || 0;
+    const todos = gerarTodosHorarios();
+    onValue(ref(db, 'agendamentos'), snapshot => {
+      const ocupados = [];
+      snapshot.forEach(child => {
+        const ag = child.val();
+        const dataAg = new Date(ag.horario);
+        if (dataAg.toISOString().split('T')[0] === dataISO) {
+          const tempo = servicosDados[ag.servicoId]?.tempo || 0;
+          ocupados.push({ start: dataAg.getTime(), end: dataAg.getTime() + tempo * 60000 });
         }
-      }
-      requestAnimationFrame(step);
-    }
+      });
+      const disponiveis = todos.filter(horario => {
+        const [h, m] = horario.split(':');
+        const inicio = new Date(`${dataISO}T${h}:${m}:00`);
+        const fim = new Date(inicio.getTime() + duracao * 60000);
+        if (fim.getHours() > 21 || (fim.getHours() === 21 && fim.getMinutes() > 0)) return false;
+        return !ocupados.some(o => (inicio < o.end && fim > o.start));
+      });
+      campoHora.innerHTML = disponiveis.length
+        ? '<option value="">Selecione um horário</option>' + disponiveis.map(h => `<option value="${h}">${h}</option>`).join('')
+        : '<option value="">Sem horários disponíveis</option>';
+    }, { onlyOnce: true });
+  }
 
-    fetchServicos();
-    initSplash();
-  </script>
+  campoData.addEventListener('change', () => {
+    if (campoData.value) atualizarHorariosDisponiveis(campoData.value);
+  });
+
+  async function fetchServicos() {
+    onValue(ref(db, 'servicos'), snapshot => {
+      servicosDiv.innerHTML = '';
+      servicosDados = {};
+      snapshot.forEach(child => {
+        const serv = child.val();
+        servicosDados[child.key] = serv;
+        const label = document.createElement('label'); label.className = 'servico';
+        const input = document.createElement('input');
+        input.type = 'radio'; input.name = 'servico'; input.value = child.key; input.required = true;
+        input.addEventListener('change', () => { if (campoData.value) atualizarHorariosDisponiveis(campoData.value); });
+        const img = document.createElement('img'); img.src = serv.imagem; img.alt = serv.nome;
+        const div = document.createElement('div');
+        const strong = document.createElement('strong'); strong.textContent = serv.nome;
+        const small = document.createElement('small'); small.textContent = `R$ ${serv.preco} - ${serv.tempo} min`;
+        div.appendChild(strong); div.appendChild(small);
+        label.appendChild(input); label.appendChild(img); label.appendChild(div);
+        servicosDiv.appendChild(label);
+      });
+    }, { onlyOnce: true });
+  }
+
+  // ------------------ Adicionado: função registrarNotificacao ------------------
+  async function registrarNotificacao(tipo, dados = {}) {
+    await push(ref(db, 'notificacoes'), {
+      id: Math.random().toString(36).substr(2,10),
+      tipo,
+      timestamp: new Date().toISOString(),
+      ...dados
+    });
+  }
+  window.registrarNotificacao = registrarNotificacao;
+  // ------------------------------------------------------------------------------
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const nome = form.nome.value.trim();
+    const whatsapp = form.whatsapp.value.trim();
+    const data = campoData.value;
+    const hora = campoHora.value;
+    const servicoInput = form.querySelector('input[name="servico"]:checked');
+    const horario = `${data}T${hora}:00`;
+    if (!nome || nome.length < 3 || !validarHorario(horario) || !servicoInput || !hora) {
+      showMessage('Provavelmente já passou desse horário🤔⏱.', true);
+      return;
+    }
+    btnAgendar.disabled = true;
+    btnAgendar.innerHTML = 'Agendando...';
+    try {
+      await push(ref(db, 'agendamentos'), {
+        nome, whatsapp, horario, servicoId: servicoInput.value,
+        status: 'Agendado', criadoEm: new Date().toISOString()
+      });
+      showMessage('Agendamento realizado com sucesso!');
+      form.reset();
+      await salvarNoHistorico({ nome, horario });
+      campoHora.innerHTML = '<option value="">Selecione uma data primeiro</option>';
+    } catch (err) {
+      showMessage('Erro ao agendar: ' + err.message, true);
+    } finally {
+      btnAgendar.disabled = false;
+      btnAgendar.innerHTML = 'Agendar <i class="fa-solid fa-calendar-check"></i>';
+    }
+  });
+
+  function initSplash() {
+    const splash = document.getElementById('splash');
+    const progressBar = document.getElementById('progressBar');
+    const container = document.querySelector('main.container');
+    let start = null;
+    function step(timestamp) {
+      if (!start) start = timestamp;
+      const elapsed = timestamp - start;
+      const progress = Math.min((elapsed / 3000) * 100, 100);
+      progressBar.style.width = progress + '%';
+      if (elapsed < 3000) requestAnimationFrame(step);
+      else {
+        splash.style.display = 'none';
+        container.style.display = 'flex';
+      }
+    }
+    requestAnimationFrame(step);
+  }
+
+  fetchServicos();
+  initSplash();
+</script>
+
+<script>
+  const toggleMenu = document.getElementById('toggleMenu');
+  const menuHistorico = document.getElementById('menuHistorico');
+
+  toggleMenu.addEventListener('click', () => {
+    menuHistorico.classList.toggle('open');
+    document.addEventListener('click', e => {
+      const clicouForaDoMenu = !menuHistorico.contains(e.target) && !toggleMenu.contains(e.target);
+      if (menuHistorico.classList.contains('open') && clicouForaDoMenu) {
+        menuHistorico.classList.remove('open');
+      }
+    });
+  });
+
+  const formatarDataHora = iso => {
+    const d = new Date(iso);
+    return d.toLocaleDateString('pt-BR') + ' ' +
+           d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const renderizarHistorico = () => {
+    const historico = JSON.parse(localStorage.getItem('historicoAgendamentos')) || [];
+    menuHistorico.innerHTML = '<h3>Histórico de Agendamentos</h3>';
+    historico.slice(0, 5).forEach((agendamento, index) => {
+      const div = document.createElement('div');
+      div.style.marginBottom = '16px';
+      div.style.padding = '10px';
+      div.style.background = '#1f1f1f';
+      div.style.borderRadius = '8px';
+      div.innerHTML = `
+        <strong>${agendamento.nome}</strong><br>
+        <small>${formatarDataHora(agendamento.horario)}</small>
+      `;
+      if (index === 0) {
+        const btnCancelar = document.createElement('button');
+        btnCancelar.textContent = 'Solicitar Cancelamento';
+        btnCancelar.style.marginTop = '8px';
+        btnCancelar.onclick = () => {
+          const msg = `Olá, gostaria de cancelar o agendamento de ${agendamento.nome} marcado para ${formatarDataHora(agendamento.horario)}.`;
+          window.open(`https://wa.me/5564992952748?text=${encodeURIComponent(msg)}`, '_blank');
+          window.registrarNotificacao('cancelamento', { nome: agendamento.nome, horario: agendamento.horario });
+        };
+
+        const btnEspera = document.createElement('button');
+        btnEspera.textContent = 'Pedir +5 min';
+        btnEspera.style.marginTop = '6px';
+        btnEspera.onclick = () => {
+          const msg = `Olá, gostaria de solicitar um acréscimo de 5 minutos para o agendamento de ${agendamento.nome} marcado para ${formatarDataHora(agendamento.horario)}.`;
+          window.open(`https://wa.me/5564992952748?text=${encodeURIComponent(msg)}`, '_blank');
+          window.registrarNotificacao('pedir_mais_5min', { nome: agendamento.nome, horario: agendamento.horario });
+        };
+
+        div.appendChild(btnCancelar);
+        div.appendChild(btnEspera);
+      }
+      menuHistorico.appendChild(div);
+    });
+  };
+
+  async function salvarNoHistorico(agendamento) {
+    const historico = JSON.parse(localStorage.getItem('historicoAgendamentos')) || [];
+    historico.unshift(agendamento);
+    localStorage.setItem('historicoAgendamentos', JSON.stringify(historico.slice(0, 5)));
+    renderizarHistorico();
+  }
+
+  renderizarHistorico();
+</script>
+
 
 </body>
 </html>
