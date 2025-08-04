@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8" name="theme-color" content="#FFD700/>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Agendamento - Barbearia</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="manifest" href="manifest.json" />
   <style>
 /* Reset e base */
     *, *::before, *::after {
@@ -359,7 +360,13 @@
       <button type="submit" id="btnAgendar">Agendar <i class="fa-solid fa-calendar-check"></i></button>
     </form>
   </main>
-
+<br>
+  <br>
+<div id="installPrompt" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+background: #FFD700; color: #121212; padding: 12px 20px; border-radius: 30px;
+font-weight: bold; box-shadow: 0 0 10px #FFD700aa; z-index: 9999; cursor: pointer;">
+  Instale o noss app no seu celular 📲
+</div>
   <div id="msgStatus"></div>
 
   <script type="module">
@@ -617,7 +624,115 @@
 
   renderizarHistorico();
 </script>
+<script>
+  const toggleMenu = document.getElementById('toggleMenu');
+  const menuHistorico = document.getElementById('menuHistorico');
 
+  toggleMenu.addEventListener('click', () => {
+    menuHistorico.classList.toggle('open');
+    document.addEventListener('click', e => {
+      const clicouForaDoMenu = !menuHistorico.contains(e.target) && !toggleMenu.contains(e.target);
+      if (menuHistorico.classList.contains('open') && clicouForaDoMenu) {
+        menuHistorico.classList.remove('open');
+      }
+    });
+  });
+
+  const formatarDataHora = iso => {
+    const d = new Date(iso);
+    return d.toLocaleDateString('pt-BR') + ' ' +
+           d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const renderizarHistorico = () => {
+    const historico = JSON.parse(localStorage.getItem('historicoAgendamentos')) || [];
+    menuHistorico.innerHTML = '<h3>Histórico de Agendamentos</h3>';
+    historico.slice(0, 5).forEach((agendamento, index) => {
+      const div = document.createElement('div');
+      div.style.marginBottom = '16px';
+      div.style.padding = '10px';
+      div.style.background = '#1f1f1f';
+      div.style.borderRadius = '8px';
+      div.innerHTML = `
+        <strong>${agendamento.nome}</strong><br>
+        <small>${formatarDataHora(agendamento.horario)}</small>
+      `;
+      if (index === 0) {
+        const btnCancelar = document.createElement('button');
+        btnCancelar.textContent = 'Solicitar Cancelamento';
+        btnCancelar.style.marginTop = '8px';
+        btnCancelar.onclick = () => {
+          const msg = `Olá, gostaria de cancelar o agendamento de ${agendamento.nome} marcado para ${formatarDataHora(agendamento.horario)}.`;
+          window.open(`https://wa.me/5564992952748?text=${encodeURIComponent(msg)}`, '_blank');
+          window.registrarNotificacao('cancelamento', { nome: agendamento.nome, horario: agendamento.horario });
+        };
+
+        const btnEspera = document.createElement('button');
+        btnEspera.textContent = 'Pedir +5 min';
+        btnEspera.style.marginTop = '6px';
+        btnEspera.onclick = () => {
+          const msg = `Olá, gostaria de solicitar um acréscimo de 5 minutos para o agendamento de ${agendamento.nome} marcado para ${formatarDataHora(agendamento.horario)}.`;
+          window.open(`https://wa.me/5564992952748?text=${encodeURIComponent(msg)}`, '_blank');
+          window.registrarNotificacao('pedir_mais_5min', { nome: agendamento.nome, horario: agendamento.horario });
+        };
+
+        div.appendChild(btnCancelar);
+        div.appendChild(btnEspera);
+      }
+      menuHistorico.appendChild(div);
+    });
+  };
+
+  async function salvarNoHistorico(agendamento) {
+    const historico = JSON.parse(localStorage.getItem('historicoAgendamentos')) || [];
+    historico.unshift(agendamento);
+    localStorage.setItem('historicoAgendamentos', JSON.stringify(historico.slice(0, 5)));
+    renderizarHistorico();
+  }
+
+  renderizarHistorico();
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js');
+        .then(reg => console.log('Service Worker registrado!', reg.scope))
+        .catch(err => console.error('Erro ao registrar o Service Worker', err));
+    });
+  }
+</script>
+  <script>
+  let deferredPrompt;
+  const installPrompt = document.getElementById('installPrompt');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault(); // Impede que o navegador exiba o banner automático
+    deferredPrompt = e;
+
+    // Mostrar o botão de instalação customizado
+    installPrompt.style.display = 'block';
+  });
+
+  installPrompt.addEventListener('click', async () => {
+    installPrompt.style.display = 'none';
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        console.log('Usuário aceitou instalar');
+      } else {
+        console.log('Usuário recusou instalar');
+      }
+      deferredPrompt = null;
+    }
+  });
+
+  // Esconde o botão se o app já estiver instalado
+  window.addEventListener('appinstalled', () => {
+    console.log('App instalado');
+    installPrompt.style.display = 'none';
+  });
+</script>
 
 </body>
 </html>
